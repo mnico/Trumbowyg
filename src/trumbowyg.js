@@ -119,10 +119,11 @@
         return false;
     };
 
-
-
     var Trumbowyg = function(editorElem, opts){
         var t = this;
+        // Get the document of the element. It use to makes the plugin
+        // compatible on iframes.
+        t.doc = editorElem.ownerDocument || document;
         // jQuery object of the editor
         t.$e = $(editorElem);
         t.$creator = $(editorElem);
@@ -314,6 +315,9 @@
                 t.isTextarea = false;
             }
 
+            if(t.$creator.is('[placeholder]'))
+                t.$editor.attr('placeholder', t.$creator.attr('placeholder'));
+
             t.$e.hide()
                    .addClass(pfx + 'textarea');
 
@@ -502,7 +506,7 @@
                     title: btn.title || btn.text || textDef,
                     mousedown: function(e){
                         if(!d || t.$box.find('.'+n+'-'+pfx + 'dropdown').is(':hidden'))
-                            $('body').trigger('mousedown');
+                            $('body', t.doc).trigger('mousedown');
 
                         if(t.$btnPane.hasClass(pfx + 'disable') && !$(this).hasClass(pfx + 'active') && !$(this).parent().hasClass(pfx + 'not-disable'))
                             return false;
@@ -540,7 +544,7 @@
                 type: 'button',
                 text: btnDef.text || btnDef.title || t.lang[n] || n,
                 mousedown: function(e){
-                    $('body').trigger('mousedown');
+                    $('body', t.doc).trigger('mousedown');
 
                     t.execCmd(btnDef.func || n,
                               btnDef.param || n);
@@ -700,6 +704,7 @@
         // Open dropdown when click on a button which open that
         dropdown: function(name){
             var t = this,
+                d = t.doc,
                 pfx = t.o.prefix,
                 $dropdown = t.$box.find('.'+name+'-'+pfx + 'dropdown'),
                 $btn = t.$btnPane.find('.'+pfx+name+'-button');
@@ -716,13 +721,13 @@
 
                 $(window).trigger('scroll');
 
-                $('body').on('mousedown', function(){
-                    $('.' + pfx + 'dropdown').hide();
-                    $('.' + pfx + 'active').removeClass(pfx + 'active');
-                    $('body').off('mousedown');
+                $('body', d).on('mousedown', function(){
+                    $('.' + pfx + 'dropdown', d).hide();
+                    $('.' + pfx + 'active', d).removeClass(pfx + 'active');
+                    $('body', d).off('mousedown');
                 });
             } else
-                $('body').trigger('mousedown');
+                $('body', d).trigger('mousedown');
         },
 
 
@@ -864,7 +869,7 @@
                     else if(cmd == 'formatBlock' && (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0))
                         param = '<' + param + '>';
 
-                    document.execCommand(cmd, false, param);
+                    t.doc.execCommand(cmd, false, param);
                 }
             }
             t.syncCode();
@@ -1060,7 +1065,7 @@
         // Selection management
         saveSelection: function(){
             var t = this,
-                d = document;
+                d = t.doc;
 
             t.selection = null;
             if(window.getSelection){
@@ -1071,13 +1076,15 @@
                 t.selection = d.selection.createRange();
         },
         restoreSelection: function(){
-            var range = this.selection;
+            var t = this,
+                range = t.selection;
+
             if(range){
                 if(window.getSelection){
                     var s = window.getSelection();
                     s.removeAllRanges();
                     s.addRange(range);
-                } else if(document.selection && range.select)
+                } else if(t.doc.selection && range.select)
                     range.select();
             }
         },
